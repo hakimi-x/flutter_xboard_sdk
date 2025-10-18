@@ -36,4 +36,9 @@ class ConfigException extends XBoardException {
 /// 参数异常
 class ParameterException extends XBoardException {
   ParameterException(super.message, [super.code]);
+}
+
+/// 证书验证异常
+class CertificateException extends XBoardException {
+  CertificateException(super.message, [super.code]);
 } 

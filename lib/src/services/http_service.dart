@@ -6,18 +6,26 @@ import 'package:flutter/services.dart';
 import '../exceptions/xboard_exceptions.dart';
 import '../core/token/token_manager.dart';
 import '../core/token/auth_interceptor.dart';
+import '../config/http_config.dart';
 
 class HttpService {
   final String baseUrl;
-  final String? proxyUrl;
+  final HttpConfig httpConfig;
   late final Dio _dio;
   TokenManager? _tokenManager;
   AuthInterceptor? _authInterceptor;
   String? _expectedCertificatePem;
+  bool _certificateLoadFailed = false;
 
-  HttpService(this.baseUrl, {TokenManager? tokenManager, this.proxyUrl}) {
+  HttpService(
+    this.baseUrl, {
+    TokenManager? tokenManager,
+    HttpConfig? httpConfig,
+  }) : httpConfig = httpConfig ?? HttpConfig.defaultConfig() {
     _tokenManager = tokenManager;
-    _loadClientCertificate();
+    if (this.httpConfig.enableCertificatePinning == true) {
+      _loadClientCertificate();
+    }
     _initializeDio();
   }
 
@@ -25,14 +33,15 @@ class HttpService {
   void _initializeDio() {
     _dio = Dio(BaseOptions(
       baseUrl: baseUrl,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      sendTimeout: const Duration(seconds: 30),
+      connectTimeout: Duration(seconds: httpConfig.connectTimeoutSeconds),
+      receiveTimeout: Duration(seconds: httpConfig.receiveTimeoutSeconds),
+      sendTimeout: Duration(seconds: httpConfig.sendTimeoutSeconds),
       responseType: ResponseType.plain,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (compatible; RmxDbGFzaC1XdWppZS1BUEkvMS4w)',
+        // 使用配置的 User-Agent，如果未设置则使用默认值
+        'User-Agent': httpConfig.userAgent ?? 'FlClash-XBoard-SDK/1.0',
       },
     ));
 
@@ -41,17 +50,27 @@ class HttpService {
       final client = HttpClient();
       
       // 配置代理
-      if (proxyUrl != null && proxyUrl!.isNotEmpty) {
+      if (httpConfig.proxyUrl != null && httpConfig.proxyUrl!.isNotEmpty) {
         client.findProxy = (uri) {
-          return "PROXY $proxyUrl";
+          return "PROXY ${httpConfig.proxyUrl}";
         };
       }
       
       // 配置SSL证书验证
-      client.badCertificateCallback = (X509Certificate cert, String host, int port) {
-        // 只验证证书，忽略主机名验证
-        return _verifyCertificate(cert);
-      };
+      if (httpConfig.enableCertificatePinning || httpConfig.ignoreCertificateHostname) {
+        client.badCertificateCallback = (X509Certificate cert, String host, int port) {
+          // 如果启用了证书固定，进行严格验证
+          if (httpConfig.enableCertificatePinning) {
+            return _verifyCertificate(cert, host, port);
+          }
+          // 如果允许忽略主机名验证（仅开发环境）
+          if (httpConfig.ignoreCertificateHostname) {
+            return true;
+          }
+          // 默认使用标准验证
+          return false;
+        };
+      }
       
       return client;
     };
@@ -91,43 +110,6 @@ class HttpService {
     // 添加新的认证拦截器
     _authInterceptor = AuthInterceptor(tokenManager: tokenManager);
     _dio.interceptors.add(_authInterceptor!);
-  }
-
-  /// 设置认证token（向后兼容）
-  @Deprecated('Use TokenManager instead')
-  void setAuthToken(String token) {
-    if (_tokenManager != null) {
-      // 如果有TokenManager，通过它来设置token
-      _tokenManager!.saveTokens(
-        accessToken: token,
-        refreshToken: '', // 临时值
-        expiry: DateTime.now().add(const Duration(hours: 24)),
-      );
-    } else {
-      // 兼容模式：直接设置header
-      _dio.options.headers['Authorization'] = token.startsWith('Bearer ') ? token : 'Bearer $token';
-    }
-  }
-
-  /// 清除认证token（向后兼容）
-  @Deprecated('Use TokenManager instead')
-  void clearAuthToken() {
-    if (_tokenManager != null) {
-      _tokenManager!.clearTokens();
-    } else {
-      _dio.options.headers.remove('Authorization');
-    }
-  }
-
-  /// 获取当前认证token（向后兼容）
-  @Deprecated('Use TokenManager instead')
-  String? getAuthToken() {
-    if (_tokenManager != null) {
-      // 这里返回null，因为TokenManager是异步的
-      return null;
-    } else {
-      return _dio.options.headers['Authorization'];
-    }
   }
 
   /// 发送GET请求
@@ -190,25 +172,32 @@ class HttpService {
 
   /// 解混淆响应数据
   /// 
-  /// Caddy混淆规则：replace "{\"status\"" "OBFS_9K8L7M6N_{\"status\""
+  /// 根据配置的混淆前缀自动检测并反混淆响应数据
+  /// 例如 Caddy 混淆规则：replace "{\"status\"" "OBFS_9K8L7M6N_{\"status\""
   dynamic _deobfuscateResponse(Response response) {
     try {
       final responseText = response.data as String;
       
-      // 自动检测是否包含混淆前缀
-      final containsObfuscationPrefix = responseText.contains('OBFS_9K8L7M6N_');
-      
-      if (containsObfuscationPrefix) {
-        // 反混淆：移除混淆前缀
-        final deobfuscated = responseText.replaceAll('OBFS_9K8L7M6N_', '');
-        return jsonDecode(deobfuscated);
-      } else {
-        // 没有混淆，尝试直接解析JSON
-        if (responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
-          return jsonDecode(responseText);
-        } else {
-          return responseText;
+      // 检查是否启用了自动反混淆且配置了混淆前缀
+      if (httpConfig.enableAutoDeobfuscation && 
+          httpConfig.obfuscationPrefix != null &&
+          httpConfig.obfuscationPrefix!.isNotEmpty) {
+        
+        // 检测是否包含混淆前缀
+        final containsObfuscationPrefix = responseText.contains(httpConfig.obfuscationPrefix!);
+        
+        if (containsObfuscationPrefix) {
+          // 反混淆：移除混淆前缀
+          final deobfuscated = responseText.replaceAll(httpConfig.obfuscationPrefix!, '');
+          return jsonDecode(deobfuscated);
         }
+      }
+      
+      // 没有混淆或未启用反混淆，尝试直接解析JSON
+      if (responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
+        return jsonDecode(responseText);
+      } else {
+        return responseText;
       }
     } catch (e) {
       // 解混淆失败，返回原始数据
@@ -216,14 +205,28 @@ class HttpService {
     }
   }
 
-  /// 验证客户端证书
+  /// 验证客户端证书（Certificate Pinning）
   /// 
-  /// 只验证证书内容，忽略主机名验证
-  bool _verifyCertificate(X509Certificate cert) {
+  /// ⚠️ 安全改进：证书加载失败时拒绝连接
+  /// [cert] 服务器证书
+  /// [host] 主机名
+  /// [port] 端口
+  bool _verifyCertificate(X509Certificate cert, String host, int port) {
     try {
-      if (_expectedCertificatePem == null) {
-        // 如果无法加载预期证书，则接受所有证书（开发模式）
-        return true;
+      // 安全检查：如果证书加载失败，拒绝连接
+      if (_certificateLoadFailed) {
+        throw CertificateException(
+          'Certificate pinning is enabled but certificate failed to load. '
+          'Refusing connection for security reasons.'
+        );
+      }
+
+      // 安全检查：如果启用了证书固定但没有期望的证书，拒绝连接
+      if (httpConfig.enableCertificatePinning && _expectedCertificatePem == null) {
+        throw CertificateException(
+          'Certificate pinning is enabled but no expected certificate is available. '
+          'Refusing connection for security reasons.'
+        );
       }
       
       // 获取当前证书的PEM格式
@@ -233,25 +236,53 @@ class HttpService {
       final expectedNormalized = _expectedCertificatePem!.replaceAll(RegExp(r'\s+'), '');
       final currentNormalized = currentCertPem.replaceAll(RegExp(r'\s+'), '');
       
-      return expectedNormalized == currentNormalized;
+      final isValid = expectedNormalized == currentNormalized;
+      
+      if (!isValid) {
+        throw CertificateException(
+          'Certificate verification failed for $host:$port. '
+          'The certificate does not match the expected certificate.'
+        );
+      }
+      
+      return isValid;
     } catch (e) {
       // 证书验证出错，为安全起见拒绝连接
+      print('[HttpService] Certificate verification error: $e');
       return false;
     }
   }
   
   /// 加载客户端证书
+  /// 
+  /// 从配置文件指定的路径加载证书（xboard.config.yaml -> security.certificate.path）
+  /// 证书加载失败时会拒绝所有 HTTPS 连接以保证安全
   void _loadClientCertificate() {
+    if (httpConfig.certificatePath == null || httpConfig.certificatePath!.isEmpty) {
+      _certificateLoadFailed = true;
+      _expectedCertificatePem = null;
+      print('[HttpService] Certificate path not configured in xboard.config.yaml');
+      return;
+    }
+
+    final certPath = httpConfig.certificatePath!;
+
     try {
       // 异步加载证书文件
-      rootBundle.loadString('packages/flutter_xboard_sdk/assets/cer/client-cert.crt').then((certContent) {
+      rootBundle.loadString(certPath).then((certContent) {
         _expectedCertificatePem = certContent;
+        _certificateLoadFailed = false;
+        print('[HttpService] ✓ Certificate loaded from config: $certPath');
       }).catchError((error) {
-        // 加载失败，保持为null（开发模式下接受所有证书）
+        _certificateLoadFailed = true;
         _expectedCertificatePem = null;
+        print('[HttpService] ✗ Failed to load certificate from $certPath: $error');
+        print('[HttpService] All HTTPS connections will be rejected for security.');
       });
     } catch (e) {
+      _certificateLoadFailed = true;
       _expectedCertificatePem = null;
+      print('[HttpService] ✗ Exception loading certificate from $certPath: $e');
     }
   }
 

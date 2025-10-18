@@ -20,25 +20,20 @@ class UserInfoApi {
   }
 
   /// 校验Token是否有效
-  Future<ApiResponse<bool>> validateToken(String token) async {
+  /// 
+  /// 通过尝试获取订阅链接来验证token有效性
+  Future<ApiResponse<bool>> validateToken() async {
     try {
-      // 临时设置token用于验证
-      final originalToken = _httpService.getAuthToken();
-      _httpService.setAuthToken(token);
-      
       final result = await _httpService.getRequest('/api/v1/user/getSubscribe');
-      
-      // 恢复原token
-      if (originalToken != null) {
-        _httpService.setAuthToken(originalToken);
-      } else {
-        _httpService.clearAuthToken();
-      }
-      
+      // 如果能成功获取订阅信息，说明token有效
       return ApiResponse.fromJson(result, (json) => json['subscribe_url'] != null);
     } catch (e) {
-      if (e is XBoardException) rethrow;
-      throw ApiException('校验Token失败: $e');
+      // 如果请求失败（401等），说明token无效
+      return ApiResponse(
+        success: false,
+        message: 'Token validation failed',
+        data: false,
+      );
     }
   }
 

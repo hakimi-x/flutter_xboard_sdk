@@ -1,17 +1,17 @@
-// XBoard SDK for Flutter
+// XBoard SDK for Flutter (简化版)
 
 // 导出核心SDK类
 export 'src/xboard_sdk.dart';
 
+// 导出配置类
+export 'src/config/http_config.dart';
+
 // 导出服务类
 export 'src/services/http_service.dart';
 
-// 导出Token管理相关类
+// 导出Token管理类（极简版 - 只有2个文件）
 export 'src/core/token/token_manager.dart';
-export 'src/core/token/token_storage.dart';
-export 'src/core/token/token_storage_config.dart';
-export 'src/core/token/memory_token_storage.dart';
-export 'src/core/token/shared_preferences_token_storage.dart';
+export 'src/core/token/auth_interceptor.dart';
 
 // 导出异常类
 export 'src/exceptions/xboard_exceptions.dart';
@@ -19,7 +19,7 @@ export 'src/exceptions/xboard_exceptions.dart';
 // 导出通用模型
 export 'src/common/models/api_response.dart';
 
-
+// 导出功能模块API
 export 'src/features/order/order_api.dart';
 export 'src/features/order/order_models.dart';
 

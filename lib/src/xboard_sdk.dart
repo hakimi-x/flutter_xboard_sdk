@@ -1,6 +1,6 @@
 import 'services/http_service.dart';
 import 'core/token/token_manager.dart';
-import 'core/token/token_storage_config.dart';
+import 'config/http_config.dart';
 
 import 'features/payment/payment_api.dart';
 import 'features/plan/plan_api.dart';
@@ -12,19 +12,40 @@ import 'features/coupon/coupon_api.dart';
 import 'features/notice/notice_api.dart';
 import 'features/order/order_api.dart';
 
-// New imports for modularized auth features
+// Modularized auth features
 import 'features/app/app_api.dart';
 import 'features/invite/invite_api.dart';
 import 'features/auth/login/login_api.dart';
 import 'features/auth/register/register_api.dart';
 import 'features/auth/send_email_code/send_email_code_api.dart';
 import 'features/auth/reset_password/reset_password_api.dart';
-import 'features/auth/refresh_token/refresh_token_api.dart';
 import 'features/config/config_api.dart';
 import 'features/subscription/subscription_api.dart';
 
-/// XBoard SDK主类
+/// XBoard SDK主类（极简版）
 /// 提供对XBoard API的统一访问接口
+/// 
+/// Token永久有效，不处理过期和刷新
+/// 
+/// 使用示例：
+/// ```dart
+/// // 1. 初始化SDK
+/// await XBoardSDK.instance.initialize('https://your-api.com');
+/// 
+/// // 2. 登录
+/// final success = await XBoardSDK.instance.loginWithCredentials(
+///   'user@example.com',
+///   'password',
+/// );
+/// 
+/// // 3. 使用API
+/// final userInfo = await XBoardSDK.instance.userInfo.getUserInfo();
+/// 
+/// // 4. 监听认证状态
+/// XBoardSDK.instance.authStateStream.listen((state) {
+///   print('Auth state: $state');
+/// });
+/// ```
 class XBoardSDK {
   static XBoardSDK? _instance;
   static XBoardSDK get instance => _instance ??= XBoardSDK._internal();
@@ -39,12 +60,11 @@ class XBoardSDK {
   late TicketApi _ticketApi;
   late UserInfoApi _userInfoApi;
 
-  // New API instances for modularized auth features
+  // Modularized auth features
   late LoginApi _loginApi;
   late RegisterApi _registerApi;
   late SendEmailCodeApi _sendEmailCodeApi;
   late ResetPasswordApi _resetPasswordApi;
-  late RefreshTokenApi _refreshTokenApi;
   late ConfigApi _configApi;
   late SubscriptionApi _subscriptionApi;
   late BalanceApi _balanceApi;
@@ -57,31 +77,31 @@ class XBoardSDK {
   bool _isInitialized = false;
 
   /// 初始化SDK
+  /// 
   /// [baseUrl] XBoard服务器的基础URL
-  /// [tokenConfig] Token存储配置，如果不提供则使用默认配置
-  /// [proxyUrl] HTTP代理服务器地址，格式: username:password@host:port
+  /// [httpConfig] HTTP配置（User-Agent、混淆前缀、证书等）
+  /// [useMemoryStorage] 是否使用内存存储（默认false，测试时可设为true）
   ///
   /// 示例:
   /// ```dart
-  /// // 使用默认配置
-  /// await XBoardSDK.instance.initialize('https://your-xboard-domain.com');
-  /// 
-  /// // 使用自定义配置
+  /// // 生产环境：使用持久化存储
   /// await XBoardSDK.instance.initialize(
   ///   'https://your-xboard-domain.com',
-  ///   tokenConfig: TokenStorageConfig.production(),
+  ///   httpConfig: HttpConfig.production(
+  ///     userAgent: 'FlClash-XBoard-SDK/1.0',
+  ///   ),
   /// );
-  ///
-  /// // 使用代理
+  /// 
+  /// // 测试环境：使用内存存储
   /// await XBoardSDK.instance.initialize(
-  ///   'https://your-xboard-domain.com',
-  ///   proxyUrl: 'username:password@proxy.example.com:8080',
+  ///   'https://test-api.com',
+  ///   useMemoryStorage: true,
   /// );
   /// ```
   Future<void> initialize(
     String baseUrl, {
-    TokenStorageConfig? tokenConfig,
-    String? proxyUrl,
+    HttpConfig? httpConfig,
+    bool useMemoryStorage = false,
   }) async {
     if (baseUrl.isEmpty) {
       throw ConfigException('Base URL cannot be empty');
@@ -92,48 +112,17 @@ class XBoardSDK {
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
 
-    // 初始化TokenManager
-    final config = tokenConfig ?? TokenStorageConfig.defaultConfig();
-    _tokenManager = TokenManager(
-      storage: config.storage,
-      refreshBuffer: config.refreshBuffer,
-      autoRefresh: config.autoRefresh,
-      onTokenExpired: config.onTokenExpired,
-      onRefreshFailed: config.onRefreshFailed,
-    );
-
-    // 设置token刷新回调
-    _tokenManager.setTokenRefreshCallback(() async {
-      try {
-        final refreshToken = await _tokenManager.getRefreshToken();
-        if (refreshToken != null) {
-          final response = await _refreshTokenApi.refreshToken();
-          if (response.success == true && response.data != null) {
-            // 这里需要根据实际的响应格式来解析token信息
-            // 假设响应包含access_token, refresh_token, expires_in等字段
-            final data = response.data as Map<String, dynamic>;
-            final accessToken = data['access_token'] as String?;
-            final newRefreshToken = data['refresh_token'] as String?;
-            final expiresIn = data['expires_in'] as int?;
-            
-            if (accessToken != null && newRefreshToken != null && expiresIn != null) {
-              final expiry = DateTime.now().add(Duration(seconds: expiresIn));
-              return TokenInfo(
-                accessToken: accessToken,
-                refreshToken: newRefreshToken,
-                expiry: expiry,
-              );
-            }
-          }
-        }
-        return null;
-      } catch (e) {
-        return null;
-      }
-    });
+    // 初始化TokenManager（极简版，只需一行）
+    _tokenManager = useMemoryStorage ? TokenManager.memory() : TokenManager();
 
     // 初始化HTTP服务
-    _httpService = HttpService(cleanUrl, tokenManager: _tokenManager, proxyUrl: proxyUrl);
+    final finalHttpConfig = httpConfig ?? HttpConfig.defaultConfig();
+    
+    _httpService = HttpService(
+      cleanUrl, 
+      tokenManager: _tokenManager, 
+      httpConfig: finalHttpConfig,
+    );
 
     // Initialize API instances
     _paymentApi = PaymentApi(_httpService);
@@ -144,7 +133,6 @@ class XBoardSDK {
     _registerApi = RegisterApi(_httpService);
     _sendEmailCodeApi = SendEmailCodeApi(_httpService);
     _resetPasswordApi = ResetPasswordApi(_httpService);
-    _refreshTokenApi = RefreshTokenApi(_httpService);
     _configApi = ConfigApi(_httpService);
     _subscriptionApi = SubscriptionApi(_httpService);
     _balanceApi = BalanceApi(_httpService);
@@ -157,52 +145,27 @@ class XBoardSDK {
     _isInitialized = true;
   }
 
-  /// 保存登录后的Token信息
-  /// [accessToken] 访问令牌
-  /// [refreshToken] 刷新令牌
-  /// [expiry] 过期时间
-  Future<void> saveTokens({
-    required String accessToken,
-    required String refreshToken,
-    required DateTime expiry,
-  }) async {
-    await _tokenManager.saveTokens(
-      accessToken: accessToken,
-      refreshToken: refreshToken,
-      expiry: expiry,
-    );
+  /// 保存Token
+  /// [token] 认证令牌（自动添加Bearer前缀）
+  Future<void> saveToken(String token) async {
+    // 确保token有Bearer前缀
+    final fullToken = token.startsWith('Bearer ') ? token : 'Bearer $token';
+    await _tokenManager.saveToken(fullToken);
   }
 
-  /// 设置认证Token（向后兼容，建议使用saveTokens）
-  @Deprecated('Use saveTokens instead for better token management')
-  void setAuthToken(String token) {
-    _httpService.setAuthToken(token);
+  /// 获取当前Token
+  Future<String?> getToken() async {
+    return await _tokenManager.getToken();
   }
 
-  /// 获取当前认证Token
-  Future<String?> getAuthToken() async {
-    return await _tokenManager.getAccessToken();
+  /// 清除Token
+  Future<void> clearToken() async {
+    await _tokenManager.clearToken();
   }
 
-  /// 清除所有Token
-  Future<void> clearTokens() async {
-    await _tokenManager.clearTokens();
-  }
-
-  /// 清除认证Token（向后兼容，建议使用clearTokens）
-  @Deprecated('Use clearTokens instead')
-  void clearAuthToken() {
-    _httpService.clearAuthToken();
-  }
-
-  /// 检查Token是否有效
-  Future<bool> isTokenValid() async {
-    return await _tokenManager.isTokenValid();
-  }
-
-  /// 手动刷新Token
-  Future<String?> refreshToken() async {
-    return await _tokenManager.refreshToken();
+  /// 检查是否有Token
+  Future<bool> hasToken() async {
+    return await _tokenManager.hasToken();
   }
 
   /// 检查SDK是否已初始化
@@ -223,20 +186,19 @@ class XBoardSDK {
   /// 获取TokenManager实例（供高级用户使用）
   TokenManager get tokenManager => _tokenManager;
 
-  // New getters for modularized auth features
+  // API getters
   LoginApi get login => _loginApi;
   RegisterApi get register => _registerApi;
   SendEmailCodeApi get sendEmailCode => _sendEmailCodeApi;
   ResetPasswordApi get resetPassword => _resetPasswordApi;
-  RefreshTokenApi get refreshTokenApi => _refreshTokenApi;
   ConfigApi get config => _configApi;
   SubscriptionApi get subscription => _subscriptionApi;
-  BalanceApi get balanceApi => _balanceApi;
-  CouponApi get couponApi => _couponApi;
-  NoticeApi get noticeApi => _noticeApi;
-  OrderApi get orderApi => _orderApi; // Added this line
-  InviteApi get inviteApi => _inviteApi;
-  AppApi get appApi => _appApi;
+  BalanceApi get balance => _balanceApi;
+  CouponApi get coupon => _couponApi;
+  NoticeApi get notice => _noticeApi;
+  OrderApi get order => _orderApi;
+  InviteApi get invite => _inviteApi;
+  AppApi get app => _appApi;
 
   /// 支付服务
   PaymentApi get payment => _paymentApi;
@@ -261,25 +223,22 @@ class XBoardSDK {
       if (response.success == true && response.data != null) {
         final data = response.data!;
         // 优先使用authData，因为它包含完整的Bearer token格式
-        // 如果authData不存在，则使用token字段
         final tokenToUse = data.authData ?? data.token;
         if (tokenToUse != null) {
-          // 如果是authData，直接使用完整的Bearer token
-          // 如果是token字段，需要添加Bearer前缀
-          final fullToken = data.authData ?? 'Bearer ${data.token}';
-          
-          await saveTokens(
-            accessToken: fullToken,
-            refreshToken: fullToken, // 临时使用相同的token
-            expiry: DateTime.now().add(const Duration(hours: 24)),
-          );
+          await saveToken(tokenToUse);
           return true;
         }
       }
       return false;
     } catch (e) {
+      print('[XBoardSDK] Login failed: $e');
       return false;
     }
+  }
+
+  /// 登出
+  Future<void> logout() async {
+    await clearToken();
   }
 
   /// 释放SDK资源
