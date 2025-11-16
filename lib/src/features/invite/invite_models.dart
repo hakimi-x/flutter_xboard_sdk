@@ -7,25 +7,12 @@ part 'invite_models.g.dart';
 DateTime _fromUnixTimestamp(int timestamp) => DateTime.fromMillisecondsSinceEpoch(timestamp * 1000);
 int _toUnixTimestamp(DateTime date) => date.millisecondsSinceEpoch ~/ 1000;
 
-// Helper for int to bool conversion (for 'show' field)
-bool _intToBool(dynamic value) {
-  if (value is int) {
-    return value == 1;
-  } else if (value is bool) {
-    return value;
-  }
-  return false; // Default or handle error
-}
-
-int _boolToInt(bool value) => value ? 1 : 0;
-
 @freezed
 class InviteCode with _$InviteCode {
   const factory InviteCode({
     @JsonKey(name: 'user_id') required int userId,
     required String code,
     required int pv,
-    @JsonKey(name: 'status', fromJson: _intToBool, toJson: _boolToInt)
     required bool status,
     @JsonKey(name: 'created_at', fromJson: _fromUnixTimestamp, toJson: _toUnixTimestamp) required DateTime createdAt,
     @JsonKey(name: 'updated_at', fromJson: _fromUnixTimestamp, toJson: _toUnixTimestamp) required DateTime updatedAt,
