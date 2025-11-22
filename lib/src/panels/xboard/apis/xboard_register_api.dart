@@ -17,15 +17,25 @@ class XBoardRegisterApi implements RegisterApi {
     String? emailCode,
   ) async {
     try {
-      // XBoard: 所有字段都是必填的，空值传空字符串
+      // 构建请求数据：只有非空值才传递字段
+      final data = <String, dynamic>{
+        "email": email,
+        "password": password,
+      };
+      
+      // 邀请码：只有非空时才添加字段
+      if (inviteCode != null && inviteCode.isNotEmpty) {
+        data["invite_code"] = inviteCode;
+      }
+      
+      // 邮箱验证码：只有非空时才添加字段
+      if (emailCode != null && emailCode.isNotEmpty) {
+        data["email_code"] = emailCode;
+      }
+      
       final response = await _httpService.postRequest(
         "/api/v1/passport/auth/register",
-        {
-          "email": email,
-          "password": password,
-          "invite_code": inviteCode ?? '',
-          "email_code": emailCode ?? '',
-        },
+        data,
       );
       return ApiResponse.fromJson(response, (json) => json);
     } catch (e) {

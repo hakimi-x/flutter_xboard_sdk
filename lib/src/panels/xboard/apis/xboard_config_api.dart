@@ -12,7 +12,8 @@ class XBoardConfigApi implements ConfigApi {
   @override
   Future<ConfigData> getConfig() async {
     try {
-      final result = await _httpService.getRequest('/api/v1/user/comm/config');
+      // 使用 guest 接口获取注册配置（包含 is_email_verify 和 is_invite_force）
+      final result = await _httpService.getRequest('/api/v1/guest/comm/config');
       return ConfigData.fromJson(result['data'] as Map<String, dynamic>);
     } catch (e) {
       if (e is XBoardException) rethrow;

@@ -7,31 +7,44 @@ part 'xboard_config_models.g.dart';
 class ConfigData with _$ConfigData {
   const factory ConfigData({
     @JsonKey(name: 'tos_url') String? tosUrl,
-    @JsonKey(name: 'is_email_verify', fromJson: _intToBool, toJson: _boolToInt)
-    required bool isEmailVerify,
-    @JsonKey(name: 'is_invite_force', fromJson: _intToBool, toJson: _boolToInt)
-    required bool isInviteForce,
+    @JsonKey(name: 'is_email_verify', fromJson: _intToBoolSafe, toJson: _boolToInt)
+    @Default(false) bool isEmailVerify,
+    @JsonKey(name: 'is_invite_force', fromJson: _intToBoolSafe, toJson: _boolToInt)
+    @Default(false) bool isInviteForce,
     @JsonKey(name: 'email_whitelist_suffix', fromJson: _emailWhitelistFromJson, toJson: _emailWhitelistToJson)
-    required List<String> emailWhitelistSuffix,
-    @JsonKey(name: 'is_captcha', fromJson: _intToBool, toJson: _boolToInt)
-    required bool isCaptcha,
-    @JsonKey(name: 'captcha_type') required String captchaType,
+    @Default([]) List<String> emailWhitelistSuffix,
+    @JsonKey(name: 'is_captcha', fromJson: _intToBoolSafe, toJson: _boolToInt)
+    @Default(false) bool isCaptcha,
+    @JsonKey(name: 'captcha_type') @Default('') String captchaType,
     @JsonKey(name: 'recaptcha_site_key') String? recaptchaSiteKey,
     @JsonKey(name: 'recaptcha_v3_site_key') String? recaptchaV3SiteKey,
     @JsonKey(name: 'recaptcha_v3_score_threshold')
-    required double recaptchaV3ScoreThreshold,
+    @Default(0.5) double recaptchaV3ScoreThreshold,
     @JsonKey(name: 'turnstile_site_key') String? turnstileSiteKey,
-    @JsonKey(name: 'app_description') required String appDescription,
-    @JsonKey(name: 'app_url') required String appUrl,
+    @JsonKey(name: 'app_description') @Default('') String appDescription,
+    @JsonKey(name: 'app_url') @Default('') String appUrl,
     String? logo,
-    @JsonKey(name: 'is_recaptcha', fromJson: _intToBool, toJson: _boolToInt)
-    required bool isRecaptcha,
+    @JsonKey(name: 'is_recaptcha', fromJson: _intToBoolSafe, toJson: _boolToInt)
+    @Default(false) bool isRecaptcha,
   }) = _ConfigData;
 
   factory ConfigData.fromJson(Map<String, dynamic> json) => _$ConfigDataFromJson(json);
 }
 
-bool _intToBool(int value) => value == 1;
+/// 安全地将整数或布尔值转换为布尔值
+/// 支持: 0/1 (int), true/false (bool), null (返回 false)
+bool _intToBoolSafe(dynamic value) {
+  if (value == null) return false;
+  if (value is bool) return value;
+  if (value is int) return value == 1;
+  if (value is String) {
+    final intValue = int.tryParse(value);
+    if (intValue != null) return intValue == 1;
+    return value.toLowerCase() == 'true';
+  }
+  return false;
+}
+
 int _boolToInt(bool value) => value ? 1 : 0;
 
 List<String> _emailWhitelistFromJson(dynamic value) {
