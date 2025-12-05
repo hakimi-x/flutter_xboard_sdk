@@ -1,15 +1,13 @@
 import '../../../core/http/http_service.dart';
 import '../models/xboard_config_models.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
-import '../../../contracts/config_api.dart';
 
 /// XBoard 配置 API 实现
-class XBoardConfigApi implements ConfigApi {
+class XBoardConfigApi {
   final HttpService _httpService;
 
   XBoardConfigApi(this._httpService);
 
-  @override
   Future<ConfigData> getConfig() async {
     try {
       // 使用 guest 接口获取注册配置（包含 is_email_verify 和 is_invite_force）

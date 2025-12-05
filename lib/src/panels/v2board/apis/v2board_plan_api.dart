@@ -1,16 +1,14 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/plan_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
 import '../../xboard/models/xboard_plan_models.dart';
 
 /// V2Board 套餐 API 实现
-class V2BoardPlanApi implements PlanApi {
+class V2BoardPlanApi {
   final HttpService _httpService;
 
   V2BoardPlanApi(this._httpService);
 
-  @override
   Future<ApiResponse<List<Plan>>> fetchPlans() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/plan/fetch');

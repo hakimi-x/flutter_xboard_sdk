@@ -2,15 +2,13 @@ import '../../../core/http/http_service.dart';
 import '../models/xboard_order_models.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
-import '../../../contracts/order_api.dart';
 
 /// XBoard 订单 API 实现
-class XBoardOrderApi implements OrderApi {
+class XBoardOrderApi {
   final HttpService _httpService;
 
   XBoardOrderApi(this._httpService);
 
-  @override
   Future<OrderResponse> fetchUserOrders() async {
     try {
       final result = await _httpService.getRequest("/api/v1/user/order/fetch");
@@ -21,7 +19,6 @@ class XBoardOrderApi implements OrderApi {
     }
   }
 
-  @override
   Future<Order> getOrderDetails(String tradeNo) async {
     try {
       final result = await _httpService.getRequest(
@@ -37,7 +34,6 @@ class XBoardOrderApi implements OrderApi {
     }
   }
 
-  @override
   Future<ApiResponse<dynamic>> cancelOrder(String tradeNo) async {
     try {
       final result = await _httpService.postRequest(
@@ -51,7 +47,6 @@ class XBoardOrderApi implements OrderApi {
     }
   }
 
-  @override
   Future<ApiResponse<String>> createOrder({
     required int planId,
     required String period,
@@ -75,7 +70,6 @@ class XBoardOrderApi implements OrderApi {
     }
   }
 
-  @override
   Future<ApiResponse<List<PaymentMethod>>> getPaymentMethods() async {
     try {
       final result = await _httpService.getRequest("/api/v1/user/order/getPaymentMethod");
@@ -91,7 +85,6 @@ class XBoardOrderApi implements OrderApi {
     }
   }
 
-  @override
   Future<CheckoutResult> submitPayment({
     required String tradeNo,
     required String method,

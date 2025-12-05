@@ -4,6 +4,8 @@
 /// ```dart
 /// import 'panels/xboard/apis/xboard_apis.dart';
 /// ```
+/// XBoard APIs
+library;
 
 export 'xboard_invite_api.dart';
 export 'xboard_register_api.dart';

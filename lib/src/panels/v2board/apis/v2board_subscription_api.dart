@@ -1,15 +1,13 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/subscription_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../xboard/models/xboard_subscription_models.dart';
 
 /// V2Board 订阅 API 实现
-class V2BoardSubscriptionApi implements SubscriptionApi {
+class V2BoardSubscriptionApi {
   final HttpService _httpService;
 
   V2BoardSubscriptionApi(this._httpService);
 
-  @override
   Future<SubscriptionInfo> getSubscriptionInfo() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/getSubscribe');

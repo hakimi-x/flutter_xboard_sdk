@@ -1,16 +1,14 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/invite_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
 import '../../xboard/models/xboard_invite_models.dart';
 
 /// V2Board 邀请 API 实现
-class V2BoardInviteApi implements InviteApi {
+class V2BoardInviteApi {
   final HttpService _httpService;
 
   V2BoardInviteApi(this._httpService);
 
-  @override
   Future<ApiResponse<InviteInfo>> getInviteInfo() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/invite/fetch');
@@ -22,7 +20,6 @@ class V2BoardInviteApi implements InviteApi {
     }
   }
 
-  @override
   Future<ApiResponse<InviteCode>> generateInviteCode() async {
     try {
       final result = await _httpService.postRequest('/api/v1/user/invite/save', {});
@@ -34,7 +31,6 @@ class V2BoardInviteApi implements InviteApi {
     }
   }
 
-  @override
   Future<ApiResponse<List<CommissionDetail>>> fetchCommissionDetails({
     required int current,
     required int pageSize,
@@ -54,7 +50,6 @@ class V2BoardInviteApi implements InviteApi {
     }
   }
 
-  @override
   Future<String> generateInviteLink(String baseUrl) async {
     try {
       final inviteInfo = await getInviteInfo();

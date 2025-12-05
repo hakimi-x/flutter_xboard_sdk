@@ -1,16 +1,14 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/app_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
 import '../../xboard/models/xboard_app_models.dart';
 
 /// V2Board 应用 API 实现
-class V2BoardAppApi implements AppApi {
+class V2BoardAppApi {
   final HttpService _httpService;
 
   V2BoardAppApi(this._httpService);
 
-  @override
   Future<ApiResponse<AppInfo>> generateDedicatedApp() async {
     try {
       final result = await _httpService.postRequest('/api/v1/user/app/generate', {});
@@ -22,7 +20,6 @@ class V2BoardAppApi implements AppApi {
     }
   }
 
-  @override
   Future<ApiResponse<AppInfo>> fetchDedicatedAppInfo() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/app/info');

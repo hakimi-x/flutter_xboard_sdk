@@ -1,16 +1,13 @@
 import '../../../core/http/http_service.dart';
 import '../models/xboard_send_email_code_models.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
-import '../../../contracts/send_email_code_api.dart';
-import '../../../core/models/api_response.dart';
 
 /// XBoard 邮箱验证码 API 实现
-class XBoardSendEmailCodeApi implements SendEmailCodeApi {
+class XBoardSendEmailCodeApi {
   final HttpService _httpService;
 
   XBoardSendEmailCodeApi(this._httpService);
 
-  @override
   Future<SendEmailCodeResult> sendEmailCode(String email) async {
     try {
       final result = await _httpService.postRequest(

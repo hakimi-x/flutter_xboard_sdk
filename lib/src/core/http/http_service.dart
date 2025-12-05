@@ -7,6 +7,7 @@ import 'package:socks5_proxy/socks_client.dart';
 import '../exceptions/xboard_exceptions.dart';
 import '../auth/token_manager.dart';
 import '../auth/auth_interceptor.dart';
+import '../logging/sdk_logger.dart';
 import 'http_config.dart';
 
 class HttpService {
@@ -18,16 +19,30 @@ class HttpService {
   String? _expectedCertificatePem;
   bool _certificateLoadFailed = false;
 
-  HttpService(
-    this.baseUrl, {
+  HttpService._internal(
+    this.baseUrl,
+    this.httpConfig,
+    this._tokenManager,
+  );
+
+  /// 创建 HttpService 实例（异步工厂方法）
+  static Future<HttpService> create(
+    String baseUrl, {
     TokenManager? tokenManager,
     HttpConfig? httpConfig,
-  }) : httpConfig = httpConfig ?? HttpConfig.defaultConfig() {
-    _tokenManager = tokenManager;
-    if (this.httpConfig.enableCertificatePinning == true) {
-      _loadClientCertificate();
+  }) async {
+    final config = httpConfig ?? HttpConfig.defaultConfig();
+    final service = HttpService._internal(baseUrl, config, tokenManager);
+    
+    // 如果启用证书固定，先加载证书
+    if (config.enableCertificatePinning == true) {
+      await service._loadClientCertificate();
     }
-    _initializeDio();
+    
+    // 初始化 Dio
+    service._initializeDio();
+    
+    return service;
   }
 
   /// 初始化Dio配置
@@ -48,15 +63,15 @@ class HttpService {
 
     // 配置客户端证书和SSL验证
     (_dio.httpClientAdapter as IOHttpClientAdapter).createHttpClient = () {
-      print('[XBoardSDK] 🔨 创建 HttpClient...');
+      SdkLogger.d('[XBoardSDK] 🔨 创建 HttpClient...');
       final client = HttpClient();
 
       // 配置代理
       if (httpConfig.proxyUrl != null && httpConfig.proxyUrl!.isNotEmpty) {
-        print('[XBoardSDK] 🔌 配置代理: ${httpConfig.proxyUrl}');
+        SdkLogger.d('[XBoardSDK] 🔌 配置代理: ${httpConfig.proxyUrl}');
 
         final proxyConfig = _parseProxyConfig(httpConfig.proxyUrl!);
-        print('[XBoardSDK] 🔄 解析: host=${proxyConfig['host']}, port=${proxyConfig['port']}, auth=${proxyConfig['username'] != null}');
+        SdkLogger.d('[XBoardSDK] 🔄 解析: host=${proxyConfig['host']}, port=${proxyConfig['port']}, auth=${proxyConfig['username'] != null}');
 
         // 使用 socks5_proxy 配置代理
         final proxySettings = ProxySettings(
@@ -67,7 +82,7 @@ class HttpService {
         );
 
         SocksTCPClient.assignToHttpClient(client, [proxySettings]);
-        print('[XBoardSDK] ✅ SOCKS5 代理配置完成');
+        SdkLogger.i('[XBoardSDK] ✅ SOCKS5 代理配置完成');
       }
       
       // 配置SSL证书验证
@@ -98,7 +113,7 @@ class HttpService {
         final fullUrl = options.uri.toString();
         final proxyStatus = httpConfig.proxyUrl != null && httpConfig.proxyUrl!.isNotEmpty;
         final proxyInfo = proxyStatus ? httpConfig.proxyUrl : 'DIRECT';
-        print('[XBoardSDK] 📡 ${options.method} $fullUrl | proxy: $proxyStatus ($proxyInfo)');
+        SdkLogger.d('[XBoardSDK] 📡 ${options.method} $fullUrl | proxy: $proxyStatus ($proxyInfo)');
 
         handler.next(options);
       },
@@ -236,8 +251,11 @@ class HttpService {
   /// [port] 端口
   bool _verifyCertificate(X509Certificate cert, String host, int port) {
     try {
+      SdkLogger.i('[HttpService] 🔐 开始验证证书: $host:$port');
+      
       // 安全检查：如果证书加载失败，拒绝连接
       if (_certificateLoadFailed) {
+        SdkLogger.e('[HttpService] ❌ 证书加载失败，拒绝连接');
         throw CertificateException(
           'Certificate pinning is enabled but certificate failed to load. '
           'Refusing connection for security reasons.'
@@ -246,32 +264,50 @@ class HttpService {
 
       // 安全检查：如果启用了证书固定但没有期望的证书，拒绝连接
       if (httpConfig.enableCertificatePinning && _expectedCertificatePem == null) {
+        SdkLogger.e('[HttpService] ❌ 证书固定已启用但未加载期望证书');
         throw CertificateException(
           'Certificate pinning is enabled but no expected certificate is available. '
           'Refusing connection for security reasons.'
         );
       }
       
+      // 打印服务器证书信息
+      SdkLogger.i('[HttpService] 📜 服务器证书信息:');
+      SdkLogger.i('[HttpService]   - 主体: ${cert.subject}');
+      SdkLogger.i('[HttpService]   - 签发者: ${cert.issuer}');
+      SdkLogger.i('[HttpService]   - 有效期: ${cert.startValidity} ~ ${cert.endValidity}');
+      
       // 获取当前证书的PEM格式
       final currentCertPem = cert.pem;
+      
+      SdkLogger.i('[HttpService] 🔍 比较证书指纹...');
+      SdkLogger.i('[HttpService]   - 期望证书长度: ${_expectedCertificatePem!.length} 字符');
+      SdkLogger.i('[HttpService]   - 服务器证书长度: ${currentCertPem.length} 字符');
       
       // 比较证书内容（忽略空白字符差异）
       final expectedNormalized = _expectedCertificatePem!.replaceAll(RegExp(r'\s+'), '');
       final currentNormalized = currentCertPem.replaceAll(RegExp(r'\s+'), '');
       
+      SdkLogger.i('[HttpService]   - 标准化后期望证书长度: ${expectedNormalized.length}');
+      SdkLogger.i('[HttpService]   - 标准化后服务器证书长度: ${currentNormalized.length}');
+      
       final isValid = expectedNormalized == currentNormalized;
       
       if (!isValid) {
+        SdkLogger.e('[HttpService] ❌ 证书不匹配！');
+        SdkLogger.e('[HttpService]   - 期望证书前100字符: ${expectedNormalized.substring(0, 100.clamp(0, expectedNormalized.length))}');
+        SdkLogger.e('[HttpService]   - 服务器证书前100字符: ${currentNormalized.substring(0, 100.clamp(0, currentNormalized.length))}');
         throw CertificateException(
           'Certificate verification failed for $host:$port. '
           'The certificate does not match the expected certificate.'
         );
       }
       
+      SdkLogger.i('[HttpService] ✅ 证书验证成功！');
       return isValid;
     } catch (e) {
       // 证书验证出错，为安全起见拒绝连接
-      print('[HttpService] Certificate verification error: $e');
+      SdkLogger.e('[HttpService] ⛔ 证书验证异常: $e');
       return false;
     }
   }
@@ -280,32 +316,39 @@ class HttpService {
   /// 
   /// 从配置文件指定的路径加载证书（xboard.config.yaml -> security.certificate.path）
   /// 证书加载失败时会拒绝所有 HTTPS 连接以保证安全
-  void _loadClientCertificate() {
+  Future<void> _loadClientCertificate() async {
+    SdkLogger.i('[HttpService] 📋 开始加载证书...');
+    SdkLogger.i('[HttpService]   - 证书固定: ${httpConfig.enableCertificatePinning}');
+    SdkLogger.i('[HttpService]   - 证书路径: ${httpConfig.certificatePath}');
+    
     if (httpConfig.certificatePath == null || httpConfig.certificatePath!.isEmpty) {
       _certificateLoadFailed = true;
       _expectedCertificatePem = null;
-      print('[HttpService] Certificate path not configured in xboard.config.yaml');
+      SdkLogger.w('[HttpService] ⚠️ 证书路径未配置');
       return;
     }
 
     final certPath = httpConfig.certificatePath!;
 
     try {
-      // 异步加载证书文件
-      rootBundle.loadString(certPath).then((certContent) {
-        _expectedCertificatePem = certContent;
-        _certificateLoadFailed = false;
-        print('[HttpService] ✓ Certificate loaded from config: $certPath');
-      }).catchError((error) {
-        _certificateLoadFailed = true;
-        _expectedCertificatePem = null;
-        print('[HttpService] ✗ Failed to load certificate from $certPath: $error');
-        print('[HttpService] All HTTPS connections will be rejected for security.');
-      });
-    } catch (e) {
+      SdkLogger.i('[HttpService] 🔄 正在从 assets 加载证书: $certPath');
+      
+      // 同步等待证书加载
+      final certContent = await rootBundle.loadString(certPath);
+      
+      _expectedCertificatePem = certContent;
+      _certificateLoadFailed = false;
+      
+      SdkLogger.i('[HttpService] ✅ 证书加载成功！');
+      SdkLogger.i('[HttpService]   - 证书内容长度: ${certContent.length} 字符');
+      SdkLogger.i('[HttpService]   - 证书前100字符: ${certContent.substring(0, 100.clamp(0, certContent.length))}');
+      
+    } catch (error) {
       _certificateLoadFailed = true;
       _expectedCertificatePem = null;
-      print('[HttpService] ✗ Exception loading certificate from $certPath: $e');
+      SdkLogger.e('[HttpService] ❌ 证书加载失败！');
+      SdkLogger.e('[HttpService]   - 错误: $error');
+      SdkLogger.e('[HttpService]   - 所有 HTTPS 连接将被拒绝');
     }
   }
 
@@ -356,7 +399,7 @@ class HttpService {
       String errorMessage = '请求失败 (状态码: $statusCode)';
       
       // 打印响应数据以便调试
-      print('[HttpService] Error Response (status: $statusCode): $responseData');
+      SdkLogger.w('[HttpService] Error Response (status: $statusCode): $responseData');
       
       // 尝试从响应中提取错误信息
       if (responseData is Map<String, dynamic>) {
@@ -383,7 +426,7 @@ class HttpService {
         errorMessage = responseData;
       }
       
-      print('[HttpService] Extracted error message: $errorMessage');
+      SdkLogger.w('[HttpService] Extracted error message: $errorMessage');
 
       // 创建新的DioException，保持原有的错误信息但添加我们的错误消息
       return DioException(
@@ -403,7 +446,8 @@ class HttpService {
     if (error is DioException) {
       if (error.response != null) {
         final statusCode = error.response!.statusCode!;
-        final errorMessage = error.message ?? '请求失败';
+        // 直接使用已经提取的错误消息（在 _handleDioError 中处理）
+        final errorMessage = error.message ?? error.error?.toString() ?? '请求失败';
         
         if (statusCode == 401) {
           return AuthException(errorMessage);
@@ -413,13 +457,14 @@ class HttpService {
           return NetworkException(errorMessage);
         }
       } else {
-        // 网络错误
-        return NetworkException('网络连接失败: ${error.message}');
+        // 网络错误 - 直接使用 Dio 的原始错误信息
+        String errorMsg = error.error?.toString() ?? error.message ?? error.type.toString();
+        return NetworkException(errorMsg);
       }
     } else if (error is XBoardException) {
       return error;
     } else {
-      return ApiException('请求失败: $error');
+      return ApiException(error.toString());
     }
   }
 

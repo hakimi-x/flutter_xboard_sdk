@@ -2,15 +2,13 @@ import '../../../core/http/http_service.dart';
 import '../../../core/models/api_response.dart';
 import '../models/xboard_plan_models.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
-import '../../../contracts/plan_api.dart';
 
 /// XBoard 套餐 API 实现
-class XBoardPlanApi implements PlanApi {
+class XBoardPlanApi {
   final HttpService _httpService;
 
   XBoardPlanApi(this._httpService);
 
-  @override
   Future<ApiResponse<List<Plan>>> fetchPlans() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/plan/fetch');

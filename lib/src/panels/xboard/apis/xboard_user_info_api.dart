@@ -2,15 +2,13 @@ import '../../../core/http/http_service.dart';
 import '../models/xboard_user_info_models.dart';
 import '../../../core/models/api_response.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
-import '../../../contracts/user_info_api.dart';
 
 /// XBoard 用户信息 API 实现
-class XBoardUserInfoApi implements UserInfoApi {
+class XBoardUserInfoApi {
   final HttpService _httpService;
 
   XBoardUserInfoApi(this._httpService);
 
-  @override
   Future<ApiResponse<UserInfo>> getUserInfo() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/info');
@@ -24,7 +22,6 @@ class XBoardUserInfoApi implements UserInfoApi {
     }
   }
 
-  @override
   Future<ApiResponse<bool>> validateToken() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/getSubscribe');
@@ -40,7 +37,6 @@ class XBoardUserInfoApi implements UserInfoApi {
     }
   }
 
-  @override
   Future<ApiResponse<String?>> getSubscriptionLink() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/getSubscribe');
@@ -51,7 +47,6 @@ class XBoardUserInfoApi implements UserInfoApi {
     }
   }
 
-  @override
   Future<ApiResponse<String?>> resetSubscriptionLink() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/resetSecurity');
@@ -62,29 +57,36 @@ class XBoardUserInfoApi implements UserInfoApi {
     }
   }
 
-  @override
   Future<ApiResponse<void>> toggleTrafficReminder(bool value) async {
     try {
       final result = await _httpService.postRequest('/api/v1/user/update', {
         'remind_traffic': value ? 1 : 0,
       });
-      return ApiResponse.fromJson(result, (json) => null);
+      return ApiResponse.fromJson(result, (json) {});
     } catch (e) {
       if (e is XBoardException) rethrow;
       throw ApiException('切换流量提醒失败: $e');
     }
   }
 
-  @override
   Future<ApiResponse<void>> toggleExpireReminder(bool value) async {
     try {
       final result = await _httpService.postRequest('/api/v1/user/update', {
         'remind_expire': value ? 1 : 0,
       });
-      return ApiResponse.fromJson(result, (json) => null);
+      return ApiResponse.fromJson(result, (json) {});
     } catch (e) {
       if (e is XBoardException) rethrow;
       throw ApiException('切换到期提醒失败: $e');
+    }
+  }
+  Future<ApiResponse<void>> updateUserInfo(Map<String, dynamic> data) async {
+    try {
+      final result = await _httpService.postRequest('/api/v1/user/update', data);
+      return ApiResponse.fromJson(result, (json) {});
+    } catch (e) {
+      if (e is XBoardException) rethrow;
+      throw ApiException('更新用户信息失败: $e');
     }
   }
 }

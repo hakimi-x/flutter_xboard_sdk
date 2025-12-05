@@ -1,15 +1,13 @@
 import '../../../core/http/http_service.dart';
 import '../models/xboard_balance_models.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
-import '../../../contracts/balance_api.dart';
 
 /// XBoard 余额 API 实现
-class XBoardBalanceApi implements BalanceApi {
+class XBoardBalanceApi {
   final HttpService _httpService;
 
   XBoardBalanceApi(this._httpService);
 
-  @override
   Future<TransferResult> transferCommission(int amount) async {
     try {
       final response = await _httpService.postRequest(
@@ -28,7 +26,6 @@ class XBoardBalanceApi implements BalanceApi {
     }
   }
 
-  @override
   Future<WithdrawResult> withdrawFunds(String withdrawMethod, String withdrawAccount) async {
     try {
       final response = await _httpService.postRequest(

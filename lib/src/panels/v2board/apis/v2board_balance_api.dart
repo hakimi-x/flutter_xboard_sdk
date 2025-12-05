@@ -1,15 +1,13 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/balance_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../xboard/models/xboard_balance_models.dart';
 
 /// V2Board 余额 API 实现
-class V2BoardBalanceApi implements BalanceApi {
+class V2BoardBalanceApi {
   final HttpService _httpService;
 
   V2BoardBalanceApi(this._httpService);
 
-  @override
   Future<TransferResult> transferCommission(int amount) async {
     try {
       final result = await _httpService.postRequest(
@@ -23,7 +21,6 @@ class V2BoardBalanceApi implements BalanceApi {
     }
   }
 
-  @override
   Future<WithdrawResult> withdrawFunds(String withdrawMethod, String withdrawAccount) async {
     try {
       final result = await _httpService.postRequest(

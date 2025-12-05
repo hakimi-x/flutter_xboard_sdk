@@ -1,16 +1,14 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/notice_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
 import '../../xboard/models/xboard_notice_models.dart';
 
 /// V2Board 公告 API 实现
-class V2BoardNoticeApi implements NoticeApi {
+class V2BoardNoticeApi {
   final HttpService _httpService;
 
   V2BoardNoticeApi(this._httpService);
 
-  @override
   Future<ApiResponse<List<Notice>>> fetchNotices() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/notice/fetch');

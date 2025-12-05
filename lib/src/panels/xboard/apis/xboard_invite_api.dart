@@ -1,16 +1,14 @@
 import '../../../core/http/http_service.dart';
 import '../../../core/models/api_response.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
-import '../../../contracts/invite_api.dart';
 import '../models/xboard_invite_models.dart';
 
 /// XBoard 邀请 API 实现
-class XBoardInviteApi implements InviteApi {
+class XBoardInviteApi {
   final HttpService _httpService;
 
   XBoardInviteApi(this._httpService);
 
-  @override
   Future<ApiResponse<InviteCode>> generateInviteCode() async {
     try {
       // 调用生成邀请码接口（返回 boolean）
@@ -43,7 +41,6 @@ class XBoardInviteApi implements InviteApi {
     }
   }
 
-  @override
   Future<ApiResponse<InviteInfo>> getInviteInfo() async {
     try {
       final response = await _httpService.getRequest('/api/v1/user/invite/fetch');
@@ -56,7 +53,6 @@ class XBoardInviteApi implements InviteApi {
     }
   }
 
-  @override
   Future<ApiResponse<List<CommissionDetail>>> fetchCommissionDetails({
     required int current,
     required int pageSize,
@@ -96,7 +92,6 @@ class XBoardInviteApi implements InviteApi {
     }
   }
 
-  @override
   Future<String> generateInviteLink(String baseUrl) async {
     // 获取邀请信息以获取邀请码
     final inviteInfo = await getInviteInfo();
@@ -113,5 +108,49 @@ class XBoardInviteApi implements InviteApi {
     ).code;
     
     return '$baseUrl/?code=$code';
+  }
+
+  Future<ApiResponse<bool>> withdrawCommission({
+    required double amount,
+    required String method,
+    required Map<String, dynamic> params,
+  }) async {
+    try {
+      final response = await _httpService.postRequest('/api/v1/user/invite/withdraw', {
+        'amount': amount,
+        'method': method,
+        ...params,
+      });
+      
+      return ApiResponse(
+        success: true,
+        data: true,
+        message: response['message'] as String?,
+      );
+    } catch (e) {
+      if (e is XBoardException) rethrow;
+      throw ApiException('Withdraw commission failed: $e');
+    }
+  }
+
+  Future<ApiResponse<bool>> transferCommissionToBalance({
+    required double amount,
+  }) async {
+    try {
+      // 假设接口为 /api/v1/user/invite/transfer
+      // 如果实际接口不同，请修改此处
+      final response = await _httpService.postRequest('/api/v1/user/invite/transfer', {
+        'amount': amount,
+      });
+      
+      return ApiResponse(
+        success: true,
+        data: true,
+        message: response['message'] as String?,
+      );
+    } catch (e) {
+      if (e is XBoardException) rethrow;
+      throw ApiException('Transfer commission failed: $e');
+    }
   }
 }

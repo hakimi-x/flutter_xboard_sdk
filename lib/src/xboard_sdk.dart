@@ -3,34 +3,22 @@ import 'core/auth/token_manager.dart';
 import 'core/factory/panel_type.dart';
 import 'core/factory/api_factory.dart';
 import 'core/http/http_config.dart';
-
 import 'core/exceptions/xboard_exceptions.dart';
-import 'contracts/contracts.dart'; // 统一导入所有契约
+import 'core/logging/sdk_logger.dart';
 
-/// XBoard SDK主类（极简版）
+import 'api/interfaces/user_api.dart';
+import 'api/interfaces/plan_api.dart';
+import 'api/interfaces/order_api.dart';
+import 'api/interfaces/subscription_api.dart';
+import 'api/interfaces/invite_api.dart';
+import 'api/interfaces/notice_api.dart';
+import 'api/interfaces/ticket_api.dart';
+import 'api/interfaces/config_api.dart';
+import 'api/interfaces/payment_api.dart';
+import 'api/interfaces/auth_api.dart';
+
+/// XBoard SDK主类
 /// 提供对XBoard API的统一访问接口
-/// 
-/// Token永久有效，不处理过期和刷新
-/// 
-/// 使用示例：
-/// ```dart
-/// // 1. 初始化SDK
-/// await XBoardSDK.instance.initialize('https://your-api.com');
-/// 
-/// // 2. 登录
-/// final success = await XBoardSDK.instance.loginWithCredentials(
-///   'user@example.com',
-///   'password',
-/// );
-/// 
-/// // 3. 使用API
-/// final userInfo = await XBoardSDK.instance.userInfo.getUserInfo();
-/// 
-/// // 4. 监听认证状态
-/// XBoardSDK.instance.authStateStream.listen((state) {
-///   print('Auth state: $state');
-/// });
-/// ```
 class XBoardSDK {
   static XBoardSDK? _instance;
   static XBoardSDK get instance => _instance ??= XBoardSDK._internal();
@@ -42,48 +30,21 @@ class XBoardSDK {
   late ApiFactory _apiFactory;
   PanelType? _panelType;
 
-  // 所有 APIs 使用策略模式（契约类型）
-  late InviteApi _inviteApi;
-  late RegisterApi _registerApi;
-  late UserInfoApi _userInfoApi;
-  late OrderApi _orderApi;
-  late PlanApi _planApi;
-  late BalanceApi _balanceApi;
-  late ConfigApi _configApi;
-  late LoginApi _loginApi;
-  late TicketApi _ticketApi;
-  late SubscriptionApi _subscriptionApi;
-  late NoticeApi _noticeApi;
-  late CouponApi _couponApi;
-  late AppApi _appApi;
-  late PaymentApi _paymentApi;
-  late SendEmailCodeApi _sendEmailCodeApi;
-  late ResetPasswordApi _resetPasswordApi;
+  // Unified APIs (Lazy Loaded)
+  UserApi? _userApi;
+  PlanApi? _planApi;
+  OrderApi? _orderApi;
+  SubscriptionApi? _subscriptionApi;
+  InviteApi? _inviteApi;
+  NoticeApi? _noticeApi;
+  TicketApi? _ticketApi;
+  ConfigApi? _configApi;
+  PaymentApi? _paymentApi;
+  AuthApi? _authApi;
 
   bool _isInitialized = false;
 
   /// 初始化SDK
-  /// 
-  /// [baseUrl] XBoard服务器的基础URL
-  /// [panelType] 面板类型 ('xboard' 或 'v2board')
-  /// [httpConfig] HTTP配置（User-Agent、混淆前缀、证书等）
-  /// [useMemoryStorage] 是否使用内存存储（默认false，测试时可设为true）
-  ///
-  /// 示例:
-  /// ```dart
-  /// // 基础初始化
-  /// await XBoardSDK.instance.initialize(
-  ///   'https://your-xboard-domain.com',
-  ///   panelType: 'xboard',
-  /// );
-  /// 
-  /// // 使用代理
-  /// await XBoardSDK.instance.initialize(
-  ///   'https://your-xboard-domain.com',
-  ///   panelType: 'xboard',
-  ///   proxyUrl: '127.0.0.1:7890',
-  /// );
-  /// ```
   Future<void> initialize(
     String baseUrl, {
     required String panelType,
@@ -91,7 +52,14 @@ class XBoardSDK {
     String? userAgent,
     HttpConfig? httpConfig,
     bool useMemoryStorage = false,
+    bool enableLogging = false,
+    bool usePrintLogger = false,
   }) async {
+    if (_isInitialized) {
+      SdkLogger.w('SDK is already initialized. Call dispose() first if you want to re-initialize.');
+      return;
+    }
+
     if (baseUrl.isEmpty) {
       throw ConfigException('Base URL cannot be empty');
     }
@@ -99,6 +67,8 @@ class XBoardSDK {
     if (panelType.isEmpty) {
       throw ConfigException('Panel type cannot be empty');
     }
+
+    SdkLogger.enable(enabled: enableLogging, usePrint: usePrintLogger);
 
     // 解析面板类型
     _panelType = PanelType.fromString(panelType);
@@ -108,11 +78,10 @@ class XBoardSDK {
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
 
-    // 初始化TokenManager（极简版，只需一行）
+    // 初始化TokenManager
     _tokenManager = useMemoryStorage ? TokenManager.memory() : TokenManager();
 
     // 初始化HTTP服务
-    // 如果提供了 proxyUrl 或 userAgent，创建自定义配置
     final finalHttpConfig = httpConfig ?? 
       (proxyUrl != null || userAgent != null
         ? HttpConfig.development(
@@ -121,7 +90,7 @@ class XBoardSDK {
           )
         : HttpConfig.defaultConfig());
     
-    _httpService = HttpService(
+    _httpService = await HttpService.create(
       cleanUrl, 
       tokenManager: _tokenManager, 
       httpConfig: finalHttpConfig,
@@ -130,47 +99,32 @@ class XBoardSDK {
     // 创建 API 工厂
     _apiFactory = ApiFactory(_panelType!, _httpService);
 
-    // 使用工厂创建所有 APIs（策略模式）
-    _inviteApi = _apiFactory.createInviteApi();
-    _registerApi = _apiFactory.createRegisterApi();
-    _userInfoApi = _apiFactory.createUserInfoApi();
-    _orderApi = _apiFactory.createOrderApi();
-    _planApi = _apiFactory.createPlanApi();
-    _balanceApi = _apiFactory.createBalanceApi();
-    _configApi = _apiFactory.createConfigApi();
-    _loginApi = _apiFactory.createLoginApi();
-    _ticketApi = _apiFactory.createTicketApi();
-    _subscriptionApi = _apiFactory.createSubscriptionApi();
-    _noticeApi = _apiFactory.createNoticeApi();
-    _couponApi = _apiFactory.createCouponApi();
-    _appApi = _apiFactory.createAppApi();
-    _paymentApi = _apiFactory.createPaymentApi();
-    _sendEmailCodeApi = _apiFactory.createSendEmailCodeApi();
-    _resetPasswordApi = _apiFactory.createResetPasswordApi();
-
     _isInitialized = true;
+    SdkLogger.i('XBoardSDK initialized with panel type: $_panelType');
   }
 
   /// 保存Token
-  /// [token] 认证令牌（自动添加Bearer前缀）
   Future<void> saveToken(String token) async {
-    // 确保token有Bearer前缀
+    _checkInitialized();
     final fullToken = token.startsWith('Bearer ') ? token : 'Bearer $token';
     await _tokenManager.saveToken(fullToken);
   }
 
   /// 获取当前Token
   Future<String?> getToken() async {
+    _checkInitialized();
     return await _tokenManager.getToken();
   }
 
   /// 清除Token
   Future<void> clearToken() async {
+    _checkInitialized();
     await _tokenManager.clearToken();
   }
 
   /// 检查是否有Token
   Future<bool> hasToken() async {
+    _checkInitialized();
     return await _tokenManager.hasToken();
   }
 
@@ -178,79 +132,138 @@ class XBoardSDK {
   bool get isInitialized => _isInitialized;
 
   /// 获取认证状态流
-  Stream<AuthState> get authStateStream => _tokenManager.authStateStream;
+  Stream<AuthState> get authStateStream {
+    _checkInitialized();
+    return _tokenManager.authStateStream;
+  }
 
   /// 获取当前认证状态
-  AuthState get authState => _tokenManager.currentState;
+  AuthState get authState {
+    _checkInitialized();
+    return _tokenManager.currentState;
+  }
 
   /// 是否已认证
-  bool get isAuthenticated => _tokenManager.isAuthenticated;
+  bool get isAuthenticated {
+    _checkInitialized();
+    return _tokenManager.isAuthenticated;
+  }
 
-  /// 获取HTTP服务实例（供高级用户使用）
-  HttpService get httpService => _httpService;
+  /// 获取HTTP服务实例
+  HttpService get httpService {
+    _checkInitialized();
+    return _httpService;
+  }
 
-  /// 获取TokenManager实例（供高级用户使用）
-  TokenManager get tokenManager => _tokenManager;
+  /// 获取TokenManager实例
+  TokenManager get tokenManager {
+    _checkInitialized();
+    return _tokenManager;
+  }
 
-  // API getters
-  LoginApi get login => _loginApi;
-  RegisterApi get register => _registerApi;  // ← 使用契约类型
-  SendEmailCodeApi get sendEmailCode => _sendEmailCodeApi;
-  ResetPasswordApi get resetPassword => _resetPasswordApi;
-  ConfigApi get config => _configApi;
-  SubscriptionApi get subscription => _subscriptionApi;
-  BalanceApi get balance => _balanceApi;
-  CouponApi get coupon => _couponApi;
-  NoticeApi get notice => _noticeApi;
-  OrderApi get order => _orderApi;
-  InviteApi get invite => _inviteApi;  // ← 使用契约类型
-  AppApi get app => _appApi;
+  // API getters (Lazy Initialization)
+  UserApi get user {
+    _checkInitialized();
+    return _userApi ??= _apiFactory.createUserApi();
+  }
 
-  /// 支付服务
-  PaymentApi get payment => _paymentApi;
+  PlanApi get plan {
+    _checkInitialized();
+    return _planApi ??= _apiFactory.createPlanApi();
+  }
 
-  /// 套餐服务
-  PlanApi get plan => _planApi;
+  OrderApi get order {
+    _checkInitialized();
+    return _orderApi ??= _apiFactory.createOrderApi();
+  }
 
-  /// 工单服务
-  TicketApi get ticket => _ticketApi;
+  SubscriptionApi get subscription {
+    _checkInitialized();
+    return _subscriptionApi ??= _apiFactory.createSubscriptionApi();
+  }
 
-  /// 用户信息服务
-  UserInfoApi get userInfo => _userInfoApi;
+  InviteApi get invite {
+    _checkInitialized();
+    return _inviteApi ??= _apiFactory.createInviteApi();
+  }
+
+  NoticeApi get notice {
+    _checkInitialized();
+    return _noticeApi ??= _apiFactory.createNoticeApi();
+  }
+
+  TicketApi get ticket {
+    _checkInitialized();
+    return _ticketApi ??= _apiFactory.createTicketApi();
+  }
+
+  ConfigApi get config {
+    _checkInitialized();
+    return _configApi ??= _apiFactory.createConfigApi();
+  }
+
+  PaymentApi get payment {
+    _checkInitialized();
+    return _paymentApi ??= _apiFactory.createPaymentApi();
+  }
+
+  AuthApi get auth {
+    _checkInitialized();
+    return _authApi ??= _apiFactory.createAuthApi();
+  }
 
   /// 获取基础URL
-  String? get baseUrl => _httpService.baseUrl;
+  String? get baseUrl => _isInitialized ? _httpService.baseUrl : null;
 
   /// 便捷登录方法
-  /// 登录成功后自动保存token
   Future<bool> loginWithCredentials(String email, String password) async {
     try {
-      final response = await _loginApi.login(email, password);
-      // LoginResult 就是 LoginData，直接包含 token 和 authData
-      // 优先使用authData，因为它包含完整的Bearer token格式
-      final tokenToUse = response.authData ?? response.token;
-      if (tokenToUse != null) {
-        await saveToken(tokenToUse);
+      final token = await auth.login(email, password);
+      if (token != null) {
+        await saveToken(token);
         return true;
       }
       return false;
     } catch (e) {
-      // 如果已经是 XBoardException，直接抛出，避免重复包装
       if (e is XBoardException) {
         rethrow;
       }
-      throw AuthException('登录失败: $e');
+      throw AuthException('Login failed: $e');
     }
   }
 
   /// 登出
   Future<void> logout() async {
+    await auth.logout();
     await clearToken();
   }
 
-  /// 释放SDK资源
+  /// 释放SDK资源并重置状态
   void dispose() {
-    _tokenManager.dispose();
-    _httpService.dispose();
+    if (_isInitialized) {
+      _tokenManager.dispose();
+      _httpService.dispose();
+      
+      // Reset all lazy loaded APIs
+      _userApi = null;
+      _planApi = null;
+      _orderApi = null;
+      _subscriptionApi = null;
+      _inviteApi = null;
+      _noticeApi = null;
+      _ticketApi = null;
+      _configApi = null;
+      _paymentApi = null;
+      _authApi = null;
+
+      _isInitialized = false;
+      SdkLogger.i('XBoardSDK disposed');
+    }
+  }
+
+  void _checkInitialized() {
+    if (!_isInitialized) {
+      throw ConfigException('XBoardSDK is not initialized. Call initialize() first.');
+    }
   }
 }

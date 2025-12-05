@@ -1,3 +1,4 @@
+// ignore_for_file: invalid_annotation_target
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'xboard_plan_models.freezed.dart';
@@ -78,7 +79,7 @@ class Plan with _$Plan {
   bool get isVisible => show;
 
   /// 是否有价格
-  bool get hasPrice => [onetimePrice, monthPrice, quarterPrice, halfYearPrice, yearPrice, twoYearPrice, threeYearPrice].any((p) => p != null && p! > 0);
+  bool get hasPrice => [onetimePrice, monthPrice, quarterPrice, halfYearPrice, yearPrice, twoYearPrice, threeYearPrice].any((p) => p != null && p > 0);
 }
 
 @freezed

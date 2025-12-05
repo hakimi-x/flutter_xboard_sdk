@@ -4,6 +4,7 @@
 /// ```dart
 /// import '../models/xboard_models.dart';
 /// ```
+library;
 
 export 'xboard_invite_models.dart';
 export 'xboard_user_info_models.dart';

@@ -1,16 +1,14 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/ticket_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
 import '../../xboard/models/xboard_ticket_models.dart';
 
 /// V2Board 工单 API 实现
-class V2BoardTicketApi implements TicketApi {
+class V2BoardTicketApi {
   final HttpService _httpService;
 
   V2BoardTicketApi(this._httpService);
 
-  @override
   Future<ApiResponse<List<Ticket>>> fetchTickets() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/ticket/fetch');
@@ -23,7 +21,6 @@ class V2BoardTicketApi implements TicketApi {
     }
   }
 
-  @override
   Future<ApiResponse<TicketDetail>> getTicketDetail(int ticketId) async {
     try {
       final result = await _httpService.getRequest(
@@ -37,7 +34,6 @@ class V2BoardTicketApi implements TicketApi {
     }
   }
 
-  @override
   Future<ApiResponse<Ticket>> createTicket({
     required String subject,
     required int level,
@@ -60,7 +56,6 @@ class V2BoardTicketApi implements TicketApi {
     }
   }
 
-  @override
   Future<ApiResponse<void>> replyTicket({
     required int ticketId,
     required String message,
@@ -77,7 +72,6 @@ class V2BoardTicketApi implements TicketApi {
     }
   }
 
-  @override
   Future<ApiResponse<void>> closeTicket(int ticketId) async {
     try {
       final result = await _httpService.postRequest(

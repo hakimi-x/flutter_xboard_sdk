@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'token_manager.dart';
+import '../logging/sdk_logger.dart';
 
 /// 认证拦截器（简化版）
 /// 自动为HTTP请求添加token，不处理自动刷新和重试
@@ -41,10 +42,19 @@ class AuthInterceptor extends Interceptor {
       }
 
       handler.next(options);
-    } catch (e) {
-      print('[AuthInterceptor] Error in onRequest: $e');
+    } catch (e, stackTrace) {
+      SdkLogger.e('[AuthInterceptor] Error in onRequest', e, stackTrace);
       handler.next(options); // 继续请求，让服务器返回401
     }
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    if (err.response?.statusCode == 401) {
+      SdkLogger.w('[AuthInterceptor] 401 Unauthorized: ${err.requestOptions.path}');
+      // TODO: 这里可以添加 Token 过期通知逻辑
+    }
+    handler.next(err);
   }
 
   /// 检查是否为公开端点

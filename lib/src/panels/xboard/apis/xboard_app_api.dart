@@ -2,15 +2,13 @@ import '../../../core/http/http_service.dart';
 import '../models/xboard_app_models.dart';
 import '../../../core/models/api_response.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
-import '../../../contracts/app_api.dart';
 
 /// XBoard APP API 实现
-class XBoardAppApi implements AppApi {
+class XBoardAppApi {
   final HttpService _httpService;
 
   XBoardAppApi(this._httpService);
 
-  @override
   Future<ApiResponse<AppInfo>> generateDedicatedApp() async {
     try {
       final response = await _httpService.postRequest(
@@ -28,7 +26,6 @@ class XBoardAppApi implements AppApi {
     }
   }
 
-  @override
   Future<ApiResponse<AppInfo>> fetchDedicatedAppInfo() async {
     try {
       final response = await _httpService.getRequest('/api/v1/user/app/fetch');

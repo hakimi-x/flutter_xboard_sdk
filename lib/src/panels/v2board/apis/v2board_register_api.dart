@@ -1,15 +1,13 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/register_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
 
 /// V2Board 注册 API 实现
-class V2BoardRegisterApi implements RegisterApi {
+class V2BoardRegisterApi {
   final HttpService _httpService;
 
   V2BoardRegisterApi(this._httpService);
 
-  @override
   Future<ApiResponse> register(
     String email,
     String password,

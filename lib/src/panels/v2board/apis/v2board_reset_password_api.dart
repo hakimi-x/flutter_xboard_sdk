@@ -1,15 +1,13 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/reset_password_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
 
 /// V2Board 重置密码 API 实现
-class V2BoardResetPasswordApi implements ResetPasswordApi {
+class V2BoardResetPasswordApi {
   final HttpService _httpService;
 
   V2BoardResetPasswordApi(this._httpService);
 
-  @override
   Future<ApiResponse> resetPassword({
     required String email,
     required String password,

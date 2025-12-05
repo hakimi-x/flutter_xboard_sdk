@@ -1,6 +1,5 @@
+// ignore_for_file: invalid_annotation_target
 import 'package:freezed_annotation/freezed_annotation.dart';
-import '../../../core/models/api_response.dart';
-import 'xboard_plan_models.dart';
 
 part 'xboard_order_models.freezed.dart';
 part 'xboard_order_models.g.dart';
@@ -9,36 +8,6 @@ part 'xboard_order_models.g.dart';
 int? _toUnixTimestamp(DateTime? date) => date?.millisecondsSinceEpoch == null ? null : date!.millisecondsSinceEpoch ~/ 1000;
 DateTime? _fromUnixTimestamp(int? timestamp) =>
     timestamp != null ? DateTime.fromMillisecondsSinceEpoch(timestamp * 1000) : null;
-
-// Helper for int to bool conversion (for 'show' field)
-bool _intToBool(dynamic value) {
-  if (value is int) {
-    return value == 1;
-  } else if (value is bool) {
-    return value;
-  }
-  return false; // Default or handle error
-}
-
-int _boolToInt(bool value) => value ? 1 : 0;
-
-// Helper for price conversion (from cents to yuan)
-double? _priceFromJson(dynamic value) {
-  if (value == null) {
-    return null;
-  }
-  if (value is num) {
-    return value.toDouble() / 100;
-  }
-  return null;
-}
-
-int? _priceToJson(double? value) {
-  if (value is double) {
-    return (value * 100).round();
-  }
-  return null;
-}
 
 @freezed
 class Order with _$Order {

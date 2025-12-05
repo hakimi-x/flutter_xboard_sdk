@@ -1,16 +1,14 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/user_info_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
 import '../../xboard/models/xboard_user_info_models.dart';
 
 /// V2Board 用户信息 API 实现
-class V2BoardUserInfoApi implements UserInfoApi {
+class V2BoardUserInfoApi {
   final HttpService _httpService;
 
   V2BoardUserInfoApi(this._httpService);
 
-  @override
   Future<ApiResponse<UserInfo>> getUserInfo() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/info');
@@ -33,7 +31,6 @@ class V2BoardUserInfoApi implements UserInfoApi {
     }
   }
 
-  @override
   Future<ApiResponse<bool>> validateToken() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/info');
@@ -46,7 +43,6 @@ class V2BoardUserInfoApi implements UserInfoApi {
     }
   }
 
-  @override
   Future<ApiResponse<String?>> getSubscriptionLink() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/getSubscribe');
@@ -64,7 +60,6 @@ class V2BoardUserInfoApi implements UserInfoApi {
     }
   }
 
-  @override
   Future<ApiResponse<String?>> resetSubscriptionLink() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/resetSecurity');
@@ -80,7 +75,6 @@ class V2BoardUserInfoApi implements UserInfoApi {
     }
   }
 
-  @override
   Future<ApiResponse<void>> toggleTrafficReminder(bool value) async {
     try {
       final result = await _httpService.postRequest(
@@ -95,7 +89,6 @@ class V2BoardUserInfoApi implements UserInfoApi {
     }
   }
 
-  @override
   Future<ApiResponse<void>> toggleExpireReminder(bool value) async {
     try {
       final result = await _httpService.postRequest(
@@ -107,6 +100,15 @@ class V2BoardUserInfoApi implements UserInfoApi {
     } catch (e) {
       if (e is XBoardException) rethrow;
       throw ApiException('V2Board 切换到期提醒失败: $e');
+    }
+  }
+  Future<ApiResponse<void>> updateUserInfo(Map<String, dynamic> data) async {
+    try {
+      final result = await _httpService.postRequest('/api/v1/user/update', data);
+      return ApiResponse.fromJson(result, null);
+    } catch (e) {
+      if (e is XBoardException) rethrow;
+      throw ApiException('V2Board 更新用户信息失败: $e');
     }
   }
 }

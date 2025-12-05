@@ -1,5 +1,15 @@
 import '../http/http_service.dart';
-import '../../contracts/contracts.dart';
+import '../../api/interfaces/user_api.dart';
+import '../../api/interfaces/plan_api.dart';
+import '../../api/interfaces/order_api.dart';
+import '../../api/interfaces/subscription_api.dart';
+import '../../api/interfaces/invite_api.dart';
+import '../../api/interfaces/notice_api.dart';
+import '../../api/interfaces/ticket_api.dart';
+import '../../api/interfaces/config_api.dart';
+import '../../api/interfaces/payment_api.dart';
+import '../../api/interfaces/auth_api.dart';
+
 import '../../panels/xboard/xboard_export.dart';
 import '../../panels/v2board/apis/v2board_login_api.dart';
 import '../../panels/v2board/apis/v2board_register_api.dart';
@@ -11,179 +21,145 @@ import '../../panels/v2board/apis/v2board_order_api.dart';
 import '../../panels/v2board/apis/v2board_payment_api.dart';
 import '../../panels/v2board/apis/v2board_subscription_api.dart';
 import '../../panels/v2board/apis/v2board_invite_api.dart';
-import '../../panels/v2board/apis/v2board_balance_api.dart';
 import '../../panels/v2board/apis/v2board_ticket_api.dart';
 import '../../panels/v2board/apis/v2board_notice_api.dart';
-import '../../panels/v2board/apis/v2board_coupon_api.dart';
 import '../../panels/v2board/apis/v2board_config_api.dart';
-import '../../panels/v2board/apis/v2board_app_api.dart';
+import '../../panels/xboard/apis/xboard_coupon_api.dart';
+import '../../panels/v2board/apis/v2board_coupon_api.dart';
+
+import '../../adapters/xboard/xboard_user_adapter.dart';
+import '../../adapters/xboard/xboard_plan_adapter.dart';
+import '../../adapters/xboard/xboard_order_adapter.dart';
+import '../../adapters/xboard/xboard_subscription_adapter.dart';
+import '../../adapters/xboard/xboard_invite_adapter.dart';
+import '../../adapters/xboard/xboard_notice_adapter.dart';
+import '../../adapters/xboard/xboard_ticket_adapter.dart';
+import '../../adapters/xboard/xboard_config_adapter.dart';
+import '../../adapters/xboard/xboard_payment_adapter.dart';
+import '../../adapters/xboard/xboard_auth_adapter.dart';
+
+import '../../adapters/v2board/v2board_user_adapter.dart';
+import '../../adapters/v2board/v2board_plan_adapter.dart';
+import '../../adapters/v2board/v2board_order_adapter.dart';
+import '../../adapters/v2board/v2board_subscription_adapter.dart';
+import '../../adapters/v2board/v2board_invite_adapter.dart';
+import '../../adapters/v2board/v2board_notice_adapter.dart';
+import '../../adapters/v2board/v2board_ticket_adapter.dart';
+import '../../adapters/v2board/v2board_config_adapter.dart';
+import '../../adapters/v2board/v2board_payment_adapter.dart';
+import '../../adapters/v2board/v2board_auth_adapter.dart';
+
 import 'panel_type.dart';
 
-/// API 工厂
-/// 根据面板类型创建对应的 API 实现
 class ApiFactory {
   final PanelType _panelType;
   final HttpService _httpService;
 
   ApiFactory(this._panelType, this._httpService);
 
-  /// 创建邀请 API
-  InviteApi createInviteApi() {
+  UserApi createUserApi() {
     switch (_panelType) {
       case PanelType.xboard:
-        return XBoardInviteApi(_httpService);
+        return XBoardUserAdapter(XBoardUserInfoApi(_httpService));
       case PanelType.v2board:
-        return V2BoardInviteApi(_httpService);
+        return V2BoardUserAdapter(V2BoardUserInfoApi(_httpService));
     }
   }
 
-  /// 创建注册 API
-  RegisterApi createRegisterApi() {
-    switch (_panelType) {
-      case PanelType.xboard:
-        return XBoardRegisterApi(_httpService);
-      case PanelType.v2board:
-        return V2BoardRegisterApi(_httpService);
-    }
-  }
-
-  /// 创建用户信息 API
-  UserInfoApi createUserInfoApi() {
-    switch (_panelType) {
-      case PanelType.xboard:
-        return XBoardUserInfoApi(_httpService);
-      case PanelType.v2board:
-        return V2BoardUserInfoApi(_httpService);
-    }
-  }
-
-  /// 创建订单 API
-  OrderApi createOrderApi() {
-    switch (_panelType) {
-      case PanelType.xboard:
-        return XBoardOrderApi(_httpService);
-      case PanelType.v2board:
-        return V2BoardOrderApi(_httpService);
-    }
-  }
-
-  /// 创建套餐 API
   PlanApi createPlanApi() {
     switch (_panelType) {
       case PanelType.xboard:
-        return XBoardPlanApi(_httpService);
+        return XBoardPlanAdapter(XBoardPlanApi(_httpService));
       case PanelType.v2board:
-        return V2BoardPlanApi(_httpService);
+        return V2BoardPlanAdapter(V2BoardPlanApi(_httpService));
     }
   }
 
-  /// 创建余额 API
-  BalanceApi createBalanceApi() {
+  OrderApi createOrderApi() {
     switch (_panelType) {
       case PanelType.xboard:
-        return XBoardBalanceApi(_httpService);
+        return XBoardOrderAdapter(
+          XBoardOrderApi(_httpService),
+          XBoardCouponApi(_httpService),
+        );
       case PanelType.v2board:
-        return V2BoardBalanceApi(_httpService);
+        return V2BoardOrderAdapter(
+          V2BoardOrderApi(_httpService),
+          V2BoardCouponApi(_httpService),
+        );
     }
   }
 
-  /// 创建配置 API
-  ConfigApi createConfigApi() {
-    switch (_panelType) {
-      case PanelType.xboard:
-        return XBoardConfigApi(_httpService);
-      case PanelType.v2board:
-        return V2BoardConfigApi(_httpService);
-    }
-  }
-
-  /// 创建登录 API
-  LoginApi createLoginApi() {
-    switch (_panelType) {
-      case PanelType.xboard:
-        return XBoardLoginApi(_httpService);
-      case PanelType.v2board:
-        return V2BoardLoginApi(_httpService);
-    }
-  }
-
-  /// 创建工单 API
-  TicketApi createTicketApi() {
-    switch (_panelType) {
-      case PanelType.xboard:
-        return XBoardTicketApi(_httpService);
-      case PanelType.v2board:
-        return V2BoardTicketApi(_httpService);
-    }
-  }
-
-  /// 创建订阅 API
   SubscriptionApi createSubscriptionApi() {
     switch (_panelType) {
       case PanelType.xboard:
-        return XBoardSubscriptionApi(_httpService);
+        return XBoardSubscriptionAdapter(XBoardSubscriptionApi(_httpService));
       case PanelType.v2board:
-        return V2BoardSubscriptionApi(_httpService);
+        return V2BoardSubscriptionAdapter(V2BoardSubscriptionApi(_httpService));
     }
   }
 
-  /// 创建公告 API
+  InviteApi createInviteApi() {
+    switch (_panelType) {
+      case PanelType.xboard:
+        return XBoardInviteAdapter(XBoardInviteApi(_httpService));
+      case PanelType.v2board:
+        return V2BoardInviteAdapter(V2BoardInviteApi(_httpService));
+    }
+  }
+
   NoticeApi createNoticeApi() {
     switch (_panelType) {
       case PanelType.xboard:
-        return XBoardNoticeApi(_httpService);
+        return XBoardNoticeAdapter(XBoardNoticeApi(_httpService));
       case PanelType.v2board:
-        return V2BoardNoticeApi(_httpService);
+        return V2BoardNoticeAdapter(V2BoardNoticeApi(_httpService));
     }
   }
 
-  /// 创建优惠券 API
-  CouponApi createCouponApi() {
+  TicketApi createTicketApi() {
     switch (_panelType) {
       case PanelType.xboard:
-        return XBoardCouponApi(_httpService);
+        return XBoardTicketAdapter(XBoardTicketApi(_httpService));
       case PanelType.v2board:
-        return V2BoardCouponApi(_httpService);
+        return V2BoardTicketAdapter(V2BoardTicketApi(_httpService));
     }
   }
 
-  /// 创建 APP API
-  AppApi createAppApi() {
+  ConfigApi createConfigApi() {
     switch (_panelType) {
       case PanelType.xboard:
-        return XBoardAppApi(_httpService);
+        return XBoardConfigAdapter(XBoardConfigApi(_httpService));
       case PanelType.v2board:
-        return V2BoardAppApi(_httpService);
+        return V2BoardConfigAdapter(V2BoardConfigApi(_httpService));
     }
   }
 
-  /// 创建支付 API
   PaymentApi createPaymentApi() {
     switch (_panelType) {
       case PanelType.xboard:
-        return XBoardPaymentApi(_httpService);
+        return XBoardPaymentAdapter(XBoardPaymentApi(_httpService));
       case PanelType.v2board:
-        return V2BoardPaymentApi(_httpService);
+        return V2BoardPaymentAdapter(V2BoardPaymentApi(_httpService));
     }
   }
 
-  /// 创建邮箱验证码 API
-  SendEmailCodeApi createSendEmailCodeApi() {
+  AuthApi createAuthApi() {
     switch (_panelType) {
       case PanelType.xboard:
-        return XBoardSendEmailCodeApi(_httpService);
+        return XBoardAuthAdapter(
+          XBoardLoginApi(_httpService),
+          XBoardRegisterApi(_httpService),
+          XBoardSendEmailCodeApi(_httpService),
+          XBoardResetPasswordApi(_httpService),
+        );
       case PanelType.v2board:
-        return V2BoardSendEmailCodeApi(_httpService);
-    }
-  }
-
-  /// 创建重置密码 API
-  ResetPasswordApi createResetPasswordApi() {
-    switch (_panelType) {
-      case PanelType.xboard:
-        return XBoardResetPasswordApi(_httpService);
-      case PanelType.v2board:
-        return V2BoardResetPasswordApi(_httpService);
+        return V2BoardAuthAdapter(
+          V2BoardLoginApi(_httpService),
+          V2BoardRegisterApi(_httpService),
+          V2BoardSendEmailCodeApi(_httpService),
+          V2BoardResetPasswordApi(_httpService),
+        );
     }
   }
 }

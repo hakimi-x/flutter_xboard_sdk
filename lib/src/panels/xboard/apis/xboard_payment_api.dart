@@ -2,15 +2,13 @@ import '../../../core/http/http_service.dart';
 import '../models/xboard_payment_models.dart';
 import '../../../core/models/api_response.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
-import '../../../contracts/payment_api.dart';
 
 /// XBoard 支付 API 实现
-class XBoardPaymentApi implements PaymentApi {
+class XBoardPaymentApi {
   final HttpService _httpService;
 
   XBoardPaymentApi(this._httpService);
 
-  @override
   Future<ApiResponse<List<PaymentMethodInfo>>> getPaymentMethods() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/order/getPaymentMethod');
@@ -26,7 +24,6 @@ class XBoardPaymentApi implements PaymentApi {
     }
   }
 
-  @override
   Future<ApiResponse<Map<String, dynamic>>> submitOrderPayment(PaymentRequest request) async {
     try {
       final result = await _httpService.postRequest('/api/v1/user/order/checkout', request.toJson());
@@ -37,7 +34,6 @@ class XBoardPaymentApi implements PaymentApi {
     }
   }
 
-  @override
   Future<ApiResponse<PaymentStatusResult>> checkPaymentStatus(String tradeNo) async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/order/status?trade_no=$tradeNo');
@@ -51,7 +47,6 @@ class XBoardPaymentApi implements PaymentApi {
     }
   }
 
-  @override
   Future<ApiResponse<PaymentStatusResult>> checkOrderStatus(String tradeNo) async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/order/check?trade_no=$tradeNo');
@@ -80,11 +75,10 @@ class XBoardPaymentApi implements PaymentApi {
     }
   }
 
-  @override
   Future<ApiResponse<void>> cancelPayment(String tradeNo) async {
     try {
       final result = await _httpService.postRequest('/api/v1/user/order/cancel', {'trade_no': tradeNo});
-      return ApiResponse.fromJson(result, (json) => null);
+      return ApiResponse.fromJson(result, (json) {});
     } catch (e) {
       if (e is XBoardException) rethrow;
       throw ApiException('取消支付失败: $e');

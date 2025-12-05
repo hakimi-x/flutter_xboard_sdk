@@ -5,6 +5,8 @@
 /// ```dart
 /// import 'panels/xboard/xboard_export.dart';
 /// ```
+/// XBoard Export
+library;
 
 // APIs
 export 'apis/xboard_apis.dart';

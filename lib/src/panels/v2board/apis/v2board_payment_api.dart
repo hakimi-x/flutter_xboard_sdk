@@ -1,16 +1,14 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/payment_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
 import '../../xboard/models/xboard_payment_models.dart';
 
 /// V2Board 支付 API 实现
-class V2BoardPaymentApi implements PaymentApi {
+class V2BoardPaymentApi {
   final HttpService _httpService;
 
   V2BoardPaymentApi(this._httpService);
 
-  @override
   Future<ApiResponse<List<PaymentMethodInfo>>> getPaymentMethods() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/order/getPaymentMethod');
@@ -38,7 +36,6 @@ class V2BoardPaymentApi implements PaymentApi {
     }
   }
 
-  @override
   Future<ApiResponse<Map<String, dynamic>>> submitOrderPayment(PaymentRequest request) async {
     try {
       final result = await _httpService.postRequest(
@@ -60,7 +57,6 @@ class V2BoardPaymentApi implements PaymentApi {
     }
   }
 
-  @override
   Future<ApiResponse<PaymentStatusResult>> checkPaymentStatus(String tradeNo) async {
     try {
       final result = await _httpService.getRequest(
@@ -78,12 +74,10 @@ class V2BoardPaymentApi implements PaymentApi {
     }
   }
 
-  @override
   Future<ApiResponse<PaymentStatusResult>> checkOrderStatus(String tradeNo) async {
     return checkPaymentStatus(tradeNo);
   }
 
-  @override
   Future<ApiResponse<void>> cancelPayment(String tradeNo) async {
     try {
       final result = await _httpService.postRequest(

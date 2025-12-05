@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../logging/sdk_logger.dart';
 
 /// 认证状态枚举
 enum AuthState {
@@ -30,7 +31,7 @@ enum AuthState {
 /// 
 /// // 监听认证状态
 /// manager.authStateStream.listen((state) {
-///   print('Auth state: $state');
+///   SdkLogger.d('Auth state: $state');
 /// });
 /// ```
 class TokenManager {
@@ -83,8 +84,8 @@ class TokenManager {
       
       _cachedToken = token;
       _updateAuthState(AuthState.authenticated);
-    } catch (e) {
-      print('[TokenManager] Failed to save token: $e');
+    } catch (e, stackTrace) {
+      SdkLogger.e('[TokenManager] Failed to save token', e, stackTrace);
       _updateAuthState(AuthState.unauthenticated);
       rethrow;
     }
@@ -114,8 +115,8 @@ class TokenManager {
       }
       
       return _cachedToken;
-    } catch (e) {
-      print('[TokenManager] Failed to get token: $e');
+    } catch (e, stackTrace) {
+      SdkLogger.e('[TokenManager] Failed to get token', e, stackTrace);
       return null;
     }
   }
@@ -138,8 +139,8 @@ class TokenManager {
       
       _cachedToken = null;
       _updateAuthState(AuthState.unauthenticated);
-    } catch (e) {
-      print('[TokenManager] Failed to clear token: $e');
+    } catch (e, stackTrace) {
+      SdkLogger.e('[TokenManager] Failed to clear token', e, stackTrace);
       rethrow;
     }
   }
@@ -166,8 +167,8 @@ class TokenManager {
       } else {
         _updateAuthState(AuthState.unauthenticated);
       }
-    } catch (e) {
-      print('[TokenManager] Failed to initialize token state: $e');
+    } catch (e, stackTrace) {
+      SdkLogger.e('[TokenManager] Failed to initialize token state', e, stackTrace);
       _updateAuthState(AuthState.unauthenticated);
     }
   }

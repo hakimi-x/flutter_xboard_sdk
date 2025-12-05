@@ -1,15 +1,13 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/login_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../xboard/models/xboard_login_models.dart'; // 复用 XBoard 的 LoginResult
 
 /// V2Board 登录 API 实现
-class V2BoardLoginApi implements LoginApi {
+class V2BoardLoginApi {
   final HttpService _httpService;
 
   V2BoardLoginApi(this._httpService);
 
-  @override
   Future<LoginResult> login(String email, String password) async {
     try {
       final result = await _httpService.postRequest(

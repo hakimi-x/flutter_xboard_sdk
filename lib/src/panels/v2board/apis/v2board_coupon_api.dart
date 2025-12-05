@@ -1,16 +1,14 @@
 import '../../../core/http/http_service.dart';
-import '../../../contracts/coupon_api.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
 import '../../../core/models/api_response.dart';
 import '../../xboard/models/xboard_coupon_models.dart';
 
 /// V2Board 优惠券 API 实现
-class V2BoardCouponApi implements CouponApi {
+class V2BoardCouponApi {
   final HttpService _httpService;
 
   V2BoardCouponApi(this._httpService);
 
-  @override
   Future<ApiResponse<CouponData>> checkCoupon(String code, int planId) async {
     try {
       final result = await _httpService.postRequest(

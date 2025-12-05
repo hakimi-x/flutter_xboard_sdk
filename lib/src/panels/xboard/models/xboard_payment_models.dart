@@ -1,3 +1,4 @@
+// ignore_for_file: invalid_annotation_target
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'xboard_payment_models.freezed.dart';
@@ -209,7 +210,7 @@ sealed class PaymentResult with _$PaymentResult {
 }
 
 @freezed
-sealed class PaymentError with _$PaymentError implements Exception {
+sealed class PaymentError with _$PaymentError {
   const PaymentError._();
 
   const factory PaymentError.noToken() = NoTokenError;

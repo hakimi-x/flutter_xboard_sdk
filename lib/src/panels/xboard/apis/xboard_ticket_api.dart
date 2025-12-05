@@ -2,15 +2,13 @@ import '../../../core/http/http_service.dart';
 import '../models/xboard_ticket_models.dart';
 import '../../../core/models/api_response.dart';
 import '../../../core/exceptions/xboard_exceptions.dart';
-import '../../../contracts/ticket_api.dart';
 
 /// XBoard 工单 API 实现
-class XBoardTicketApi implements TicketApi {
+class XBoardTicketApi {
   final HttpService _httpService;
 
   XBoardTicketApi(this._httpService);
 
-  @override
   Future<ApiResponse<List<Ticket>>> fetchTickets() async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/ticket/fetch');
@@ -26,14 +24,13 @@ class XBoardTicketApi implements TicketApi {
     }
   }
 
-  @override
-  Future<ApiResponse<Ticket>> createTicket({
+  Future<ApiResponse<Ticket?>> createTicket({
     required String subject,
     required int level,
     required String message,
   }) async {
     try {
-      final result = await _httpService.postRequest('/api/v1/user/ticket/save', {
+      final result = await _httpService.postRequest('/api/v1/user/ticket/withdraw', {
         'subject': subject,
         'message': message,
         'level': level,
@@ -44,7 +41,7 @@ class XBoardTicketApi implements TicketApi {
           return Ticket.fromJson(json);
         }
         // 如果是bool或其他类型，返回null，表示创建成功但没有返回详情
-        return null as Ticket;
+        return null;
       });
     } catch (e) {
       if (e is XBoardException) rethrow;
@@ -52,7 +49,6 @@ class XBoardTicketApi implements TicketApi {
     }
   }
 
-  @override
   Future<ApiResponse<TicketDetail>> getTicketDetail(int ticketId) async {
     try {
       final result = await _httpService.getRequest('/api/v1/user/ticket/fetch?id=$ticketId');
@@ -70,7 +66,6 @@ class XBoardTicketApi implements TicketApi {
     }
   }
 
-  @override
   Future<ApiResponse<void>> replyTicket({
     required int ticketId,
     required String message,
@@ -80,20 +75,19 @@ class XBoardTicketApi implements TicketApi {
         'id': ticketId,
         'message': message,
       });
-      return ApiResponse.fromJson(result, (json) => null);
+      return ApiResponse.fromJson(result, (json) {});
     } catch (e) {
       if (e is XBoardException) rethrow;
-      throw ApiException('回复工单时发生错误: $e');
+      throw ApiException('回复工单失败: $e');
     }
   }
 
-  @override
-  Future<ApiResponse<void>> closeTicket(int ticketId) async {
+  Future<ApiResponse<void>> closeTicket(String ticketId) async {
     try {
       final result = await _httpService.postRequest('/api/v1/user/ticket/close', {
         'id': ticketId,
       });
-      return ApiResponse.fromJson(result, (json) => null);
+      return ApiResponse.fromJson(result, (json) {});
     } catch (e) {
       if (e is XBoardException) rethrow;
       throw ApiException('关闭工单时发生错误: $e');
